@@ -4,7 +4,7 @@ import os
 import json
 import webbrowser
 
-DEBUG = True
+DEBUG = False
 REGEXP = 'require\([\'"]{1}.+?[\'"]{1}\)'
 
 def log(str):
@@ -172,6 +172,8 @@ class Underliner(sublime_plugin.EventListener):
 
   def underline_regions(self, view):
     window = view.window()
+    if not window:
+      return
     ctx = window.extract_variables()
     file_name = ctx['file_name']
 
