@@ -1,0 +1,3 @@
+[
+  { "button": "button1", "modifiers": ["super"], "command": "open_require_under_cursor", "press_command": "drag_select" }
+]
