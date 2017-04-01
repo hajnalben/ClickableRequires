@@ -74,8 +74,9 @@ class OpenRequireUnderCursorCommand(sublime_plugin.TextCommand):
     log('load_as_directory: ' + path)
     if os.path.exists(path + '/package.json'):
       package_json = json.load(open(path + '/package.json', 'r', encoding='UTF-8'))
-      if package_json['main']:
-        main_path = path + '/' + package_json['main']
+      main = package_json.get('main', 'index.js')
+      if main:
+        main_path = path + '/' + main
         return self.load_as_file(main_path) or self.load_index(main_path)
     else:
       return self.load_index(path)
