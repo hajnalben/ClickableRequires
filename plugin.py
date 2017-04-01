@@ -5,7 +5,7 @@ import json
 import webbrowser
 
 DEBUG = True
-REGEXP = 'require\(.*?\)'
+REGEXP = 'require\([\'"]{1}.+?[\'"]{1}\)'
 
 def log(str):
   if DEBUG: print(str)
@@ -161,3 +161,30 @@ core_modules = [
     'vm',
     'zlib'
 ]
+
+class Underliner(sublime_plugin.EventListener):
+
+  def on_load_async(self, view):
+    self.underline_regions(view)
+
+  def on_modified_async(self, view):
+    self.underline_regions(view)
+
+  def underline_regions(self, view):
+    window = view.window()
+    ctx = window.extract_variables()
+    file_name = ctx['file_name']
+
+    if not file_name.endswith('.js'):
+      return
+
+    regions = view.find_all(REGEXP)
+
+    # Underline only the module name
+    for region in regions:
+      region.a += 8
+      region.b -= 1
+
+    view.add_regions('requires', regions, 'support.module', 'dot', sublime.DRAW_SOLID_UNDERLINE|sublime.DRAW_NO_FILL|sublime.DRAW_NO_OUTLINE)
+
+
