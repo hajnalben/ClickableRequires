@@ -1,0 +1,8 @@
+{
+  "debug": false,
+  "reveal_in_side_bar": true, // Will reveal the file in the sidebar
+  "extensions": [".js"], // The file extensions the underliner should work
+  "scope": "support.module", // See more at https://www.sublimetext.com/docs/3/scope_naming.html
+  "icon": "dot", // Possible values: dot, circle, bookmark and cross. Empty string for hidden icon.
+  "underline": true // If the module names should be underlined
+}

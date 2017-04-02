@@ -4,7 +4,12 @@ import os
 import json
 import webbrowser
 
-DEBUG = False
+SETTINGS_FILE = 'ClickableRequires.sublime-settings'
+
+def get_setting(name):
+  return sublime.load_settings(SETTINGS_FILE).get(name)
+
+DEBUG = get_setting('debug')
 REGEXP = 'require\([\'"]{1}.+?[\'"]{1}\)'
 
 def log(str):
@@ -40,8 +45,8 @@ class OpenRequireUnderCursorCommand(sublime_plugin.TextCommand):
 
     if file:
       window.open_file(file)
-      ## TODO: Make it optional
-      sublime.set_timeout(lambda: window.run_command('reveal_in_side_bar'), 100)
+      if get_setting('reveal_in_side_bar'):
+        sublime.set_timeout(lambda: window.run_command('reveal_in_side_bar'), 100)
 
   """
   LOAD_AS_FILE(X)
@@ -172,21 +177,29 @@ class Underliner(sublime_plugin.EventListener):
 
   def underline_regions(self, view):
     window = view.window()
-    if not window:
-      return
+    if not window: return
+
     ctx = window.extract_variables()
     file_name = ctx['file_name']
 
-    if not file_name.endswith('.js'):
-      return
+    exts = get_setting('extensions')
+
+    if not file_name.endswith(tuple(exts)): return
 
     regions = view.find_all(REGEXP)
 
     # Underline only the module name
     for region in regions:
-      region.a += 8
-      region.b -= 1
+      region.a += 9
+      region.b -= 2
 
-    view.add_regions('requires', regions, 'support.module', 'dot', sublime.DRAW_SOLID_UNDERLINE|sublime.DRAW_NO_FILL|sublime.DRAW_NO_OUTLINE)
+    scope = get_setting('scope')
+    icon = get_setting('icon')
+    underline = get_setting('underline')
 
+    underline_bitmask = sublime.DRAW_NO_FILL|sublime.DRAW_NO_OUTLINE
 
+    if underline:
+      underline_bitmask |= sublime.DRAW_STIPPLED_UNDERLINE
+
+    view.add_regions('requires', regions, scope, icon, underline_bitmask)
