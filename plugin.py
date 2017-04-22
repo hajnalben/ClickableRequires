@@ -268,22 +268,47 @@ NODE_MODULES_PATHS(START)
 """
 def node_modules_paths(start):
   log('node_modules_paths: ', start)
-  path = os.path.normpath(start)
-  parts = path.split(os.sep)
-
+  parts = split_path(start)
   i = len(parts) - 1
   dirs = []
   while i >= 0:
-    log(parts[i])
     if parts[i] is 'node_modules':
       i = i - 1
       continue
 
-    _parts = (parts[:i] + ['node_modules'])
-    dir = os.path.join(os.sep, *_parts)
+    _parts = (parts[:i + 1] + ['node_modules'])
+    dir = os.path.join(*_parts)
     dirs.append(dir)
     i = i - 1
   return dirs
+
+def split_path(start):
+  path = os.path.normpath(start)
+
+  drive, path_and_file = os.path.splitdrive(path)
+  path, file = os.path.split(path_and_file)
+
+  folders = [file]
+
+  while 1:
+    path, folder = os.path.split(path)
+
+    if folder != "":
+      folders.append(folder)
+    else:
+      if path != "":
+        folders.append(path)
+
+      break
+
+  folders.reverse()
+
+  parts = folders
+
+  if (drive):
+    parts = [drive] + parts
+
+  return parts
 
 # Run in terminal: node -pe "require('repl')._builtinLibs"
 CORE_MODULES = [
