@@ -8,7 +8,7 @@ The implementation of the file search is based on the Node.js's documentation.
 
 ## Installation
 * clone the repository into Sublime Packages folder
-* it is not yet available through Package Control but it will be soon :smile:
+* install through Package Control: `ClickableRequires`
 
 ## Usage
 You can hover on any `require('module-name')` statement to open a pop-up with in-app link to the file.
