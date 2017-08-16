@@ -2,16 +2,18 @@
 
 ## Description
 Open the required javascript files with a mouseclick as you are doing it in another IDEs.
-The implementation of the file search is based on the Node.js's documentation.
+The implementation of the file search is based on the specification of require function in Node.js.
 
 > https://nodejs.org/api/modules.html#modules_all_together
+
+> :sunglasses:  Now ES6 import statements are supported as well. :sunglasses:
 
 ## Installation
 * clone the repository into Sublime Packages folder
 * install through Package Control: `ClickableRequires`
 
 ## Usage
-You can hover on any `require('module-name')` statement to open a pop-up with in-app link to the file.
+You can hover on any `require('module-name')` or `import module from 'module'` statements to open a pop-up with in-app link to the file.
 For core node modules the online documentation will be opened in the browser.
 If the file is from node_modules then also an npm link to the package will be displayed.
 
@@ -46,3 +48,24 @@ The default settings are the following:
 ```
 
 However you can override them in `Preferences -> Package Settings -> ClickableRequires -> Settings - User`.
+
+## Webpack or other module handlers
+
+If you are using webpack `resolve.modules` or `resolve.aliases` then you should configure the routes to this modules in your `.sublime-project` file.
+Use relative paths to the project file!
+
+```json
+{
+  "folders":
+  [
+    {
+      "path": "."
+    }
+  ],
+  "settings":
+  {
+     "webpack_resolve_modules": ["src", "other_module_directory"],
+     "webpack_resolve_extensions": [".js", ".jsx", ".json"]
+  }
+}
+```

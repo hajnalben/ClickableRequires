@@ -5,25 +5,37 @@ import re
 import json
 import webbrowser
 
-REGEXP = '(require\s*\(\s*[\'"])(.+?)([\'"]\s*\))'
+REQUIRE_REGEXP = '(require\s*\(\s*[\'"])(.+?)([\'"]\s*\))'
+IMPORT_REGEXP = '(import\s*(.+?\s*from\s*)?[\'"](.+?)[\'"])'
 
 # |--------------------------------------------------------------------------
-# | Main Command
+# | This command handles the clicks on the require and import statements.
+# | It investigates if the current cursor position is on the top of one of this statements
+# | and opens the selected file.
 # |--------------------------------------------------------------------------
-
 class OpenRequireUnderCursorCommand(sublime_plugin.TextCommand):
 
   def run(self, edit):
     view = self.view
-    require_statements = view.find_all(REGEXP)
+
+    if not self._search_statements(view, REQUIRE_REGEXP, 2):
+      self._search_statements(view, IMPORT_REGEXP, 3)
+
+  def _search_statements(self, view, regexp, group):
     cursor_position = view.sel()[0]
+    matches = view.find_all(regexp)
 
-    for require_statement in require_statements:
-      if cursor_position.intersects(require_statement):
-        statement = view.substr(require_statement)
-        module = re.match(REGEXP, statement).group(2)
-        return open_node_module(view.window(), module)
+    for match in matches:
+      if cursor_position.intersects(match):
+        statement = view.substr(match)
+        module = re.match(regexp, statement).group(group)
+        open_module_file(view.window(), module)
+        return True
 
+# |--------------------------------------------------------------------------
+# | This command is responsible for coloring the import and require statements
+# | and handling the mouse hover on them.
+# |--------------------------------------------------------------------------
 class RequireEventListener(sublime_plugin.EventListener):
 
   def on_load_async(self, view):
@@ -40,15 +52,14 @@ class RequireEventListener(sublime_plugin.EventListener):
     regions = self._find_regions(view)
 
     for region in regions:
-      if region.contains(point):
-        statement = view.substr(region)
-        module = re.match(REGEXP, statement).group(2)
-        return self._show_popup(view, module, point)
+      if region['region'].contains(point):
+        return self._show_popup(view, region, point)
 
   def on_pre_close(self, view):
     if (hasattr(self, 'view_regions')) and (view.id() in self.view_regions):
       del self.view_regions[view.id()]
 
+  ## Retrieves the regions from the current view containing import or require statements.
   def _find_regions(self, view):
     if not hasattr(self, 'view_regions'):
       self.view_regions = {}
@@ -56,7 +67,31 @@ class RequireEventListener(sublime_plugin.EventListener):
     if 'require_regions' in self.view_regions:
       return self.view_regions['require_regions']
 
-    regions = view.find_all(REGEXP)
+    regions = []
+
+    require_regions = view.find_all(REQUIRE_REGEXP)
+
+    for region in require_regions:
+      statement = view.substr(region)
+      match = re.match(REQUIRE_REGEXP, statement)
+
+      region.a += len(match.group(1))
+      region.b -= len(match.group(3))
+      module = match.group(2)
+
+      regions.append({ 'region': region, 'module': module, 'type': 'require' })
+
+    import_regions = view.find_all(IMPORT_REGEXP)
+
+    for region in import_regions:
+      statement = view.substr(region)
+      match = re.match(IMPORT_REGEXP, statement)
+
+      region.a += len(match.group(1)) - 1
+      region.b -= len(match.group(3)) + 1
+      module = match.group(3)
+
+      regions.append({ 'region': region, 'module': module, 'type': 'import'  })
 
     self.view_regions[view.id()] = regions
 
@@ -66,14 +101,7 @@ class RequireEventListener(sublime_plugin.EventListener):
     if not self._assert_in_right_file(view): return
 
     regions = self._find_regions(view)
-
-    for region in regions:
-      statement = view.substr(region)
-      match = re.match(REGEXP, statement)
-
-      region.a += len(match.group(1))
-      region.b -= len(match.group(3))
-
+    regions = list(map(lambda x: x['region'], regions))
     scope = get_setting('scope')
     icon = get_setting('icon')
     underline = get_setting('underline')
@@ -83,14 +111,13 @@ class RequireEventListener(sublime_plugin.EventListener):
     if underline:
       underline_bitmask |= sublime.DRAW_STIPPLED_UNDERLINE
 
-    view.add_regions('requires',  regions, scope, icon, underline_bitmask)
+    view.add_regions('requires', regions, scope, icon, underline_bitmask)
 
-  def _show_popup(self, view, module, point):
+  def _show_popup(self, view, region, point):
     window = view.window()
-    ctx = window.extract_variables()
-    file_path = ctx['file_path']
+    module = region['module']
 
-    file = find_module(module, file_path)
+    file = find_module(window, module)
 
     link = 'Module: <a href="%s">%s</a>' % (module, module)
 
@@ -109,7 +136,7 @@ class RequireEventListener(sublime_plugin.EventListener):
   def _on_anchor_clicked(self, window, module):
     if module.startswith('npm_'):
       return webbrowser.open('https://www.npmjs.com/package/' + module[len('npm_'):], autoraise=True)
-    open_node_module(window, module)
+    open_module_file(window, module)
 
   def _assert_in_right_file(self, view):
     window = view.window()
@@ -152,21 +179,49 @@ def returnIfFile(path, file = None):
 # | The pseudocode of require: https://nodejs.org/api/modules.html#modules_all_together
 # |--------------------------------------------------------------------------
 
-def open_node_module(window, module):
+def open_module_file(window, module):
+  file = find_module(window, module)
+
+  if file:
+    window.open_file(file)
+    if get_setting('reveal_in_side_bar'):
+      sublime.set_timeout(lambda: window.run_command('reveal_in_side_bar'), 100)
+  else:
+    webbrowser.open('https://nodejs.org/api/%s.html' % module, autoraise=True)
+
+def find_module(window, module):
   ctx = window.extract_variables()
   file_path = ctx['file_path']
 
-  match = find_module(module, file_path)
+  match = find_require_module(module, file_path)
 
-  if match:
-    file = returnIfFile(match)
+  if not match or not returnIfFile(match):
+    project_path = ctx['project_path']
+    webpack_modules = window.active_view().settings().get('webpack_resolve_modules')
+    webpack_extensions = window.active_view().settings().get('webpack_resolve_extensions')
 
-    if file:
-      window.open_file(file)
-      if get_setting('reveal_in_side_bar'):
-        sublime.set_timeout(lambda: window.run_command('reveal_in_side_bar'), 100)
-    else:
-      webbrowser.open('https://nodejs.org/api/%s.html' % match, autoraise=True)
+    match = find_import_module(module, project_path, webpack_modules, webpack_extensions)
+
+  return returnIfFile(match)
+
+
+def find_import_module(module, project_path, webpack_modules, webpack_extensions):
+  if not webpack_modules:
+      return
+
+  if not webpack_extensions:
+    webpack_extensions = ['.js', '.jsx', '.json']
+
+  for root in webpack_modules:
+    for extension in webpack_extensions:
+      file_path = os.path.join(project_path, root, module + extension)
+
+      print(file_path)
+
+      file = returnIfFile(file_path)
+
+      if file:
+        return file
 
 """
 require(X) from module at path Y
@@ -181,7 +236,7 @@ require(X) from module at path Y
   4. LOAD_NODE_MODULES(X, dirname(Y))
   5. THROW "not found"
 """
-def find_module(module, file_path):
+def find_require_module(module, file_path):
   if module in CORE_MODULES:
     return module
 
