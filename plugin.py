@@ -202,6 +202,19 @@ def find_module(window, module):
 
     match = find_import_module(module, project_path, webpack_modules, webpack_extensions)
 
+  if not match or not returnIfFile(match):
+    if module.startswith("/"):
+      for ext in [".jsx",".js","/index.js"]:
+        project_path = ctx['project_path']
+        
+        file_path = project_path+module+ext
+        file = returnIfFile(file_path)
+        
+        log(project_path,file_path)
+        
+        if file:
+          return file
+    
   return returnIfFile(match)
 
 
