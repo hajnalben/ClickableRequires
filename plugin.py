@@ -181,6 +181,8 @@ def returnIfFile(path, file = None):
 
 def open_module_file(window, module):
   file = find_module(window, module)
+  
+  log(file,"open_module_file")
 
   if file:
     window.open_file(file)
@@ -208,14 +210,18 @@ def find_module(window, module):
         project_path = ctx['project_path']
         
         file_path = project_path+module+ext
+
         file = returnIfFile(file_path)
         
-        log(project_path,file_path)
-        
+        log(project_path,file_path,"YO")
+
         if file:
           return file
-    
-  return returnIfFile(match)
+
+  if returnIfFile(match):
+    return returnIfFile(match)
+  
+  return returnIfFile(match,module)
 
 
 def find_import_module(module, project_path, webpack_modules, webpack_extensions):
@@ -229,7 +235,7 @@ def find_import_module(module, project_path, webpack_modules, webpack_extensions
     for extension in webpack_extensions:
       file_path = os.path.join(project_path, root, module + extension)
 
-      print(file_path)
+      log(file_path)
 
       file = returnIfFile(file_path)
 
