@@ -7,6 +7,7 @@ import webbrowser
 
 REQUIRE_REGEXP = '(require\s*\(\s*[\'"])(.+?)([\'"]\s*\))'
 IMPORT_REGEXP = '(import\s*(.+?\s*from\s*)?[\'"](.+?)[\'"])'
+EXPORT_REGEXP = '(export\s*(.+?\s*from\s*)?[\'"](.+?)[\'"])'
 
 # |--------------------------------------------------------------------------
 # | This command handles the clicks on the require and import statements.
@@ -19,7 +20,8 @@ class OpenRequireUnderCursorCommand(sublime_plugin.TextCommand):
     view = self.view
 
     if not self._search_statements(view, REQUIRE_REGEXP, 2):
-      self._search_statements(view, IMPORT_REGEXP, 3)
+      if not self._search_statements(view, IMPORT_REGEXP, 3):
+        self._search_statements(view, EXPORT_REGEXP, 3)
 
   def _search_statements(self, view, regexp, group):
     cursor_position = view.sel()[0]
@@ -181,6 +183,8 @@ def returnIfFile(path, file = None):
 
 def open_module_file(window, module):
   file = find_module(window, module)
+  
+  log(file,"open_module_file")
 
   if file:
     window.open_file(file)
@@ -202,7 +206,24 @@ def find_module(window, module):
 
     match = find_import_module(module, project_path, webpack_modules, webpack_extensions)
 
-  return returnIfFile(match)
+  if not match or not returnIfFile(match):
+    if module.startswith("/"):
+      for ext in [".jsx",".js","/index.js"]:
+        project_path = ctx['project_path']
+        
+        file_path = project_path+module+ext
+
+        file = returnIfFile(file_path)
+        
+        log(project_path,file_path,"YO")
+
+        if file:
+          return file
+
+  if returnIfFile(match):
+    return returnIfFile(match)
+  
+  return returnIfFile(match,module)
 
 
 def find_import_module(module, project_path, webpack_modules, webpack_extensions):
@@ -216,7 +237,7 @@ def find_import_module(module, project_path, webpack_modules, webpack_extensions
     for extension in webpack_extensions:
       file_path = os.path.join(project_path, root, module + extension)
 
-      print(file_path)
+      log(file_path)
 
       file = returnIfFile(file_path)
 
