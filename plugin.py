@@ -7,6 +7,7 @@ import webbrowser
 
 REQUIRE_REGEXP = '(require\s*\(\s*[\'"])(.+?)([\'"]\s*\))'
 IMPORT_REGEXP = '(import\s*(.+?\s*from\s*)?[\'"](.+?)[\'"])'
+EXPORT_REGEXP = '(export\s*(.+?\s*from\s*)?[\'"](.+?)[\'"])'
 
 # |--------------------------------------------------------------------------
 # | This command handles the clicks on the require and import statements.
@@ -19,7 +20,8 @@ class OpenRequireUnderCursorCommand(sublime_plugin.TextCommand):
     view = self.view
 
     if not self._search_statements(view, REQUIRE_REGEXP, 2):
-      self._search_statements(view, IMPORT_REGEXP, 3)
+      if not self._search_statements(view, IMPORT_REGEXP, 3):
+        self._search_statements(view, EXPORT_REGEXP, 3)
 
   def _search_statements(self, view, regexp, group):
     cursor_position = view.sel()[0]
