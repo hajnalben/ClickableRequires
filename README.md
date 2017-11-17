@@ -43,7 +43,8 @@ The default settings are the following:
   "scope": "support.module",      // See more at https://www.sublimetext.com/docs/3/scope_naming.html
   "icon": "dot",                  // Possible values: dot, circle, bookmark and cross. Empty string for hidden icon.
   "underline": true,              // If the module names should be underlined
-  "show_popup_on_hover": true     // If a popup with module link and path should appear on hovering the require statement
+  "show_popup_on_hover": true,     // If a popup with module link and path should appear on hovering the require statement
+  "auto_fold_imports": false      // Fold lines with import when opening file
 }
 ```
 

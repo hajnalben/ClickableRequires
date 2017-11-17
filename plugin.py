@@ -5,8 +5,43 @@ import re
 import json
 import webbrowser
 
-REQUIRE_REGEXP = '(require\s*\(\s*[\'"])(.+?)([\'"]\s*\))'
-IMPORT_REGEXP = '(import\s*(.+?\s*from\s*)?[\'"](.+?)[\'"])'
+REQUIRE_REGEXP = '(require\s*\(\s*[\'"])(.+?)[\'"]\s*\)'
+IMPORT_REGEXP = '((?:(?:import)|(?:export)\s*)(?:.+?)(?:from\s*)?[\'"])(.+?)[\'"];?'
+
+class EsFoldImportsListener(sublime_plugin.EventListener):
+
+  def on_load_async(self, view):
+    if not get_setting('auto_fold_imports', False):
+      return
+
+    filename = view.file_name()
+
+    exts = get_setting('extensions')
+
+    if filename.endswith(tuple(exts)):
+      view.run_command('es_fold_imports')
+
+class EsFoldImportsCommand(sublime_plugin.TextCommand):
+
+  def run(self, edit):
+    self.execute(IMPORT_REGEXP)
+
+    self.switch()
+
+  def execute(self, pattern):
+    regions = self.view.find_all(pattern)
+    if len(regions) == 0:
+      return
+
+    fn = self.view.unfold if self.is_folded() else self.view.fold
+
+    fn(sublime.Region(regions[0].begin(), regions[-1].end()))
+
+  def switch(self):
+    self.folded = False if self.is_folded() else True
+
+  def is_folded(self):
+    return hasattr(self, 'folded') and self.folded is True
 
 # |--------------------------------------------------------------------------
 # | This command handles the clicks on the require and import statements.
@@ -18,17 +53,18 @@ class OpenRequireUnderCursorCommand(sublime_plugin.TextCommand):
   def run(self, edit):
     view = self.view
 
-    if not self._search_statements(view, REQUIRE_REGEXP, 2):
-      self._search_statements(view, IMPORT_REGEXP, 3)
+    self._search_statements(view, REQUIRE_REGEXP) or \
+      self._search_statements(view, IMPORT_REGEXP)
 
-  def _search_statements(self, view, regexp, group):
+  def _search_statements(self, view, regexp):
     cursor_position = view.sel()[0]
     matches = view.find_all(regexp)
 
     for match in matches:
       if cursor_position.intersects(match):
         statement = view.substr(match)
-        module = re.match(regexp, statement).group(group)
+        matcher = re.match(regexp, statement)
+        module = matcher.group(len(matcher.groups()))
         open_module_file(view.window(), module)
         return True
 
@@ -39,9 +75,11 @@ class OpenRequireUnderCursorCommand(sublime_plugin.TextCommand):
 class RequireEventListener(sublime_plugin.EventListener):
 
   def on_load_async(self, view):
+    self._delete_cached_regions(view)
     self._underline_regions(view)
 
   def on_modified_async(self, view):
+    self._delete_cached_regions(view)
     self._underline_regions(view)
 
   def on_hover(self, view, point, hover_zone):
@@ -56,6 +94,9 @@ class RequireEventListener(sublime_plugin.EventListener):
         return self._show_popup(view, region, point)
 
   def on_pre_close(self, view):
+    self._delete_cached_regions(view)
+
+  def _delete_cached_regions(self, view):
     if (hasattr(self, 'view_regions')) and (view.id() in self.view_regions):
       del self.view_regions[view.id()]
 
@@ -64,8 +105,8 @@ class RequireEventListener(sublime_plugin.EventListener):
     if not hasattr(self, 'view_regions'):
       self.view_regions = {}
 
-    if 'require_regions' in self.view_regions:
-      return self.view_regions['require_regions']
+    if view.id() in self.view_regions:
+      return self.view_regions[view.id()]
 
     regions = []
 
@@ -75,9 +116,10 @@ class RequireEventListener(sublime_plugin.EventListener):
       statement = view.substr(region)
       match = re.match(REQUIRE_REGEXP, statement)
 
+      module = match.group(len(match.groups()))
+
       region.a += len(match.group(1))
-      region.b -= len(match.group(3))
-      module = match.group(2)
+      region.b = region.a + len(module)
 
       regions.append({ 'region': region, 'module': module, 'type': 'require' })
 
@@ -87,9 +129,10 @@ class RequireEventListener(sublime_plugin.EventListener):
       statement = view.substr(region)
       match = re.match(IMPORT_REGEXP, statement)
 
-      region.a += len(match.group(1)) - 1
-      region.b -= len(match.group(3)) + 1
-      module = match.group(3)
+      module = match.group(len(match.groups()))
+
+      region.a += len(match.group(1))
+      region.b = region.a + len(module)
 
       regions.append({ 'region': region, 'module': module, 'type': 'import'  })
 
@@ -98,7 +141,9 @@ class RequireEventListener(sublime_plugin.EventListener):
     return regions
 
   def _underline_regions(self, view):
-    if not self._assert_in_right_file(view): return
+    if not self._assert_in_right_file(view):
+      log('Skipping non js file')
+      return
 
     regions = self._find_regions(view)
     regions = list(map(lambda x: x['region'], regions))
@@ -160,8 +205,8 @@ class RequireEventListener(sublime_plugin.EventListener):
 
 SETTINGS_FILE = 'ClickableRequires.sublime-settings'
 
-def get_setting(name):
-  return sublime.load_settings(SETTINGS_FILE).get(name)
+def get_setting(name, default = None):
+  return sublime.load_settings(SETTINGS_FILE).get(name, default)
 
 def log(*str):
   if get_setting('debug'): print(*str)
@@ -195,12 +240,18 @@ def find_module(window, module):
 
   match = find_require_module(module, file_path)
 
+  if match:
+    log('Found require module: ', match)
+
   if not match or not returnIfFile(match):
     project_path = ctx['project_path']
     webpack_modules = window.active_view().settings().get('webpack_resolve_modules')
     webpack_extensions = window.active_view().settings().get('webpack_resolve_extensions')
 
     match = find_import_module(module, project_path, webpack_modules, webpack_extensions)
+
+    if match:
+      log('Found import module: ', match)
 
   return returnIfFile(match)
 
@@ -210,15 +261,14 @@ def find_import_module(module, project_path, webpack_modules, webpack_extensions
       return
 
   if not webpack_extensions:
-    webpack_extensions = ['.js', '.jsx', '.json']
+    webpack_extensions = ['', '.js', '.jsx', '.json']
 
   for root in webpack_modules:
     for extension in webpack_extensions:
-      file_path = os.path.join(project_path, root, module + extension)
+      folder_path = os.path.join(project_path, root)
 
-      print(file_path)
-
-      file = returnIfFile(file_path)
+      file = returnIfFile(os.path.join(folder_path, module + extension)) \
+        or returnIfFile(os.path.join(folder_path, 'index' + extension))
 
       if file:
         return file
