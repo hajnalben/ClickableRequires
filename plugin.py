@@ -174,7 +174,9 @@ class RequireEventListener(sublime_plugin.EventListener):
       description = '<p>Node.js core module</p>'
     elif not file:
       link = ''
-      description = 'Module cannot be found!'
+      description = '<p>Module cannot be found!</p>'
+      if not window.active_view().settings().get('webpack_resolve_modules'):
+        description += '<br/><a href="help_%s">Setup import aliases</a>' % 'https://github.com/hajnalben/ClickableRequires#webpack-or-other-module-handlers'
     else:
       description = '<p>Found at: %s</p>' % file
       if not module.startswith('.'):
@@ -187,6 +189,8 @@ class RequireEventListener(sublime_plugin.EventListener):
   def _on_anchor_clicked(self, window, module):
     if module.startswith('npm_'):
       return webbrowser.open('https://www.npmjs.com/package/' + module[len('npm_'):], autoraise=True)
+    elif module.startswith('help_'):
+      return webbrowser.open(module[len('help_'):], autoraise=True)
     open_module_file(window, module)
 
   def _assert_in_right_file(self, view):
