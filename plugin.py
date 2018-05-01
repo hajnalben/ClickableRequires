@@ -6,7 +6,10 @@ import json
 import webbrowser
 
 REQUIRE_REGEXP = '(require\s*\(\s*[\'"])(.+?)[\'"]\s*\)'
-IMPORT_REGEXP = '((?:(?:import)|(?:export)\s*)(?:.+?)(?:from\s*)?[\'"])(.+?)[\'"];?'
+
+
+
+IMPORT_REGEXP = '((?:(?:import\s*(?:(?:.|\n)*?)(?:from)?)|(?:export\s*(?:(?:.|\n)+?)(?:from))\s*)[\'"])(.+?)[\'"]'
 
 class EsFoldImportsListener(sublime_plugin.EventListener):
 
@@ -166,9 +169,12 @@ class RequireEventListener(sublime_plugin.EventListener):
 
     link = 'Module: <a href="%s">%s</a>' % (module, module)
 
-    if not returnIfFile(file):
+    if module in CORE_MODULES:
       link += ' (opens browser)'
       description = '<p>Node.js core module</p>'
+    elif not file:
+      link = ''
+      description = 'Module cannot be found!'
     else:
       description = '<p>Found at: %s</p>' % file
       if not module.startswith('.'):
@@ -198,30 +204,8 @@ class RequireEventListener(sublime_plugin.EventListener):
 
     return True
 
-
 # |--------------------------------------------------------------------------
-# | Utility functions
-# |--------------------------------------------------------------------------
-
-SETTINGS_FILE = 'ClickableRequires.sublime-settings'
-
-def get_setting(name, default = None):
-  return sublime.load_settings(SETTINGS_FILE).get(name, default)
-
-def log(*str):
-  if get_setting('debug'): print(*str)
-
-def returnIfFile(path, file = None):
-  _file = path
-
-  if file:
-    _file = os.path.join(path, file)
-
-  if os.path.isfile(_file):
-    return _file
-
-# |--------------------------------------------------------------------------
-# | The pseudocode of require: https://nodejs.org/api/modules.html#modules_all_together
+# | Global functions
 # |--------------------------------------------------------------------------
 
 def open_module_file(window, module):
@@ -272,6 +256,11 @@ def find_import_module(module, project_path, webpack_modules, webpack_extensions
 
       if file:
         return file
+
+# |--------------------------------------------------------------------------
+# | The pseudocode of require: https://nodejs.org/api/modules.html#modules_all_together
+# |--------------------------------------------------------------------------
+
 
 """
 require(X) from module at path Y
@@ -446,3 +435,27 @@ CORE_MODULES = [
   'vm',
   'zlib'
 ]
+
+# |--------------------------------------------------------------------------
+# | Utility functions
+# |--------------------------------------------------------------------------
+
+SETTINGS_FILE = 'ClickableRequires.sublime-settings'
+
+def get_setting(name, default = None):
+  return sublime.load_settings(SETTINGS_FILE).get(name, default)
+
+def log(*str):
+  if get_setting('debug'): print(*str)
+
+def returnIfFile(path, file = None):
+  if not path:
+    return
+
+  _file = path
+
+  if file:
+    _file = os.path.join(path, file)
+
+  if os.path.isfile(_file):
+    return _file
