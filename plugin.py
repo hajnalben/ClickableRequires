@@ -5,10 +5,7 @@ import re
 import json
 import webbrowser
 
-REQUIRE_REGEXP = '(require\s*\(\s*[\'"])(.+?)[\'"]\s*\)'
-
-
-
+REQUIRE_REGEXP = '(require\s*\(?\s*[\'"])(.+?)[\'"]\s*\)?'
 IMPORT_REGEXP = '((?:(?:import\s*(?:(?:.|\n)*?)(?:from)?)|(?:export\s*(?:(?:.|\n)+?)(?:from))\s*)[\'"])(.+?)[\'"]'
 
 class EsFoldImportsListener(sublime_plugin.EventListener):
@@ -234,7 +231,7 @@ def find_module(window, module):
   if not match or not returnIfFile(match):
     project_path = ctx['project_path']
     webpack_modules = window.active_view().settings().get('webpack_resolve_modules')
-    webpack_extensions = window.active_view().settings().get('webpack_resolve_extensions')
+    webpack_extensions = window.active_view().settings().get('webpack_resolve_extensions') or get_setting('resolve_extensions')
 
     match = find_import_module(module, project_path, webpack_modules, webpack_extensions)
 
@@ -248,14 +245,12 @@ def find_import_module(module, project_path, webpack_modules, webpack_extensions
   if not webpack_modules:
       return
 
-  if not webpack_extensions:
-    webpack_extensions = ['', '.js', '.jsx', '.json']
-
   for root in webpack_modules:
     for extension in webpack_extensions:
       folder_path = os.path.join(project_path, root)
 
-      file = returnIfFile(os.path.join(folder_path, module + extension)) \
+      file = returnIfFile(os.path.join(folder_path, module)) \
+        or returnIfFile(os.path.join(folder_path, module + extension)) \
         or returnIfFile(os.path.join(folder_path, 'index' + extension))
 
       if file:
@@ -298,10 +293,14 @@ LOAD_AS_FILE(X)
 """
 def load_as_file(path):
   log('load_as_file: ', path)
-  return returnIfFile(path) \
-    or returnIfFile(path + '.js') \
-    or returnIfFile(path + '.json') \
-    or returnIfFile(path + '.node')
+
+  file = returnIfFile(path)
+
+  if file: return file
+
+  for extension in get_setting('resolve_extensions'):
+    file = returnIfFile(path + extension)
+    if file: return file
 
 """
 LOAD_AS_DIRECTORY(X)
@@ -332,9 +331,10 @@ LOAD_INDEX(X)
 """
 def load_index(path):
   log('load_index: ', path)
-  return returnIfFile(path, 'index.js') \
-    or returnIfFile(path, 'index.json') \
-    or returnIfFile(path, 'index.node')
+
+  for extension in get_setting('resolve_extensions'):
+    file = returnIfFile(path, 'index' + extension)
+    if file: return file
 
 """
 LOAD_NODE_MODULES(X, START)

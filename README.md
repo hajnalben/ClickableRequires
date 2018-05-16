@@ -39,11 +39,12 @@ The default settings are the following:
 {
   "debug": false,                 // To turn on or off file searching debug logs
   "reveal_in_side_bar": true,     // Will reveal the file in the sidebar
-  "extensions": [".js", ".jsx"],  // The file extensions the plugin searches in
+  "extensions": [ ".js", ".jsx", ".ts", ".tsx", ".vue" ], // Allowed file extensions to search for import and require statements
+  "resolve_extensions": [ ".js", ".jsx", ".ts", ".tsx", ".vue", ".node", ".json" ], // The module finder will try to resolve to these extensions when searching without concrete extension
   "scope": "support.module",      // See more at https://www.sublimetext.com/docs/3/scope_naming.html
   "icon": "dot",                  // Possible values: dot, circle, bookmark and cross. Empty string for hidden icon.
   "underline": true,              // If the module names should be underlined
-  "show_popup_on_hover": true,     // If a popup with module link and path should appear on hovering the require statement
+  "show_popup_on_hover": true,    // If a popup with module link and path should appear on hovering the require statement
   "auto_fold_imports": false      // Fold lines with import when opening file
 }
 ```

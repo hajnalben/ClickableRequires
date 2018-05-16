@@ -1,7 +1,8 @@
 {
   "debug": false,
   "reveal_in_side_bar": true, // Will reveal the file in the sidebar
-  "extensions": [".js", ".vue", ".jsx"], // The file extensions the underliner should work
+  "extensions": [ ".js", ".jsx", ".ts", ".tsx", ".vue", ".coffee" ], // Allowed file extensions to search for import and require statements
+  "resolve_extensions": [ ".js", ".jsx", ".ts", ".tsx", ".vue", ".node", ".json", ".coffee" ], // The module finder will try to resolve to these extensions when searching without concrete extension
   "scope": "support.module", // See more at https://www.sublimetext.com/docs/3/scope_naming.html
   "icon": "dot", // Possible values: dot, circle, bookmark and cross. Empty string for hidden icon.
   "underline": true, // If the module names should be underlined
