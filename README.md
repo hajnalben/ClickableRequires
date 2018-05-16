@@ -1,16 +1,11 @@
 # ClickableRequires for Sublime Text 3
 
 ## Description
-Open the required javascript files with a mouseclick as you are doing it in another IDEs.
-The implementation of the file search is based on the specification of require function in Node.js.
-
-> https://nodejs.org/api/modules.html#modules_all_together
-
-> :sunglasses:  Now ES6 import statements are supported as well. :sunglasses:
+Open the required/imported javascript/typescript/coffeescript files with a mouseclick like in another IDEs.
 
 ## Installation
 * clone the repository into Sublime Packages folder
-* install through Package Control: `ClickableRequires`
+* or install through Package Control: `ClickableRequires`
 
 ## Usage
 You can hover on any `require('module-name')` or `import module from 'module'` statements to open a pop-up with in-app link to the file.
@@ -39,8 +34,8 @@ The default settings are the following:
 {
   "debug": false,                 // To turn on or off file searching debug logs
   "reveal_in_side_bar": true,     // Will reveal the file in the sidebar
-  "extensions": [ ".js", ".jsx", ".ts", ".tsx", ".vue" ], // Allowed file extensions to search for import and require statements
-  "resolve_extensions": [ ".js", ".jsx", ".ts", ".tsx", ".vue", ".node", ".json" ], // The module finder will try to resolve to these extensions when searching without concrete extension
+  "extensions": [ ".js", ".jsx", ".ts", ".tsx", ".vue", ".coffee" ], // Allowed file extensions to search for import and require statements
+  "resolve_extensions": [ ".js", ".jsx", ".ts", ".tsx", ".vue", ".node", ".json", ".coffee" ], // The module finder will try to resolve to these extensions when searching without concrete extension
   "scope": "support.module",      // See more at https://www.sublimetext.com/docs/3/scope_naming.html
   "icon": "dot",                  // Possible values: dot, circle, bookmark and cross. Empty string for hidden icon.
   "underline": true,              // If the module names should be underlined
