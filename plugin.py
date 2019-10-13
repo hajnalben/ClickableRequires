@@ -250,6 +250,7 @@ def find_import_module(module, project_path, webpack_modules, webpack_extensions
       folder_path = os.path.join(project_path, root)
 
       file = returnIfFile(os.path.join(folder_path, module)) \
+        or returnIfFile(os.path.join(folder_path, module, 'index' + extension)) \
         or returnIfFile(os.path.join(folder_path, module + extension)) \
         or returnIfFile(os.path.join(folder_path, 'index' + extension))
 
